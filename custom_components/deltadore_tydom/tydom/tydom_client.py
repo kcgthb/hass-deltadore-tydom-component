@@ -1357,7 +1357,9 @@ class TydomClient:
         """Acknowledge the alarm events."""
         # PUT /devices/xxxx/endpoints/xxxx/cdata?name=ackEventCmd HTTP/1.1 {"pwd":"xxxxxx"}
         pwd = alarm_pin or self._alarm_pin
-        if pwd is None:
+        # The config entry stores an unset pin as an empty string, not None;
+        # the box silently ignores the command in both cases.
+        if not pwd:
             LOGGER.warning("Tydom alarm pin is not set!")
         await self.put_data(
             f"/devices/{device_id}/endpoints/{endpoint_id}/cdata?name=ackEventCmd",
