@@ -1165,9 +1165,6 @@ class TydomClient:
                 str(e),
             )
             raise
-        LOGGER.debug("Sending message to tydom (%s)", "PUT device data")
-        if not file_mode:
-            await self.send_bytes(a_bytes)
 
         return 0
 
