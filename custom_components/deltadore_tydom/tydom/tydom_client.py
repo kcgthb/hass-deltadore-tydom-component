@@ -1355,17 +1355,11 @@ class TydomClient:
 
     async def put_ackevents_cdata(self, device_id, endpoint_id=None, alarm_pin=None):
         """Acknowledge the alarm events."""
-        # PUT /devices/xxxx/endpoints/xxxx/cdata?name=ackEventCmd HTTP/1.1 {"pwd":"xxxxxx"}
-        pwd = alarm_pin or self._alarm_pin
-        # The config entry stores an unset pin as an empty string, not None;
-        # the box silently ignores the command in both cases.
-        if not pwd:
-            LOGGER.warning("Tydom alarm pin is not set!")
-        await self.put_data(
-            f"/devices/{device_id}/endpoints/{endpoint_id}/cdata?name=ackEventCmd",
-            "pwd",
-            str(pwd),
-        )
+        # Experiment: /devices/meta declares ackEventCmd as a writable data
+        # attribute with enum ["ACK"], so try the data channel (no pwd);
+        # every cdata form (body or query, right pin or not) is rejected by
+        # this box with an HTTP 500.
+        await self.put_devices_data(device_id, endpoint_id, "ackEventCmd", "ACK")
 
     async def get_historic_cdata(
         self,
