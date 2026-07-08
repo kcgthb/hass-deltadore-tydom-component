@@ -1103,23 +1103,6 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
-    async def put_data(self, path, name, value):
-        """Give order (name + value) to path."""
-        body = json.dumps({name: value})
-
-        str_request = (
-            f"PUT {path} HTTP/1.1\r\nContent-Length: "
-            + str(len(body))
-            + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
-            + body
-            + "\r\n\r\n"
-        )
-        a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
-        LOGGER.debug("Sending message to tydom (%s)", "PUT data")
-        if not file_mode:
-            await self.send_bytes(a_bytes)
-        return 0
-
     async def put_devices_data(
         self,
         device_id,
@@ -1354,11 +1337,16 @@ class TydomClient:
             LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
 
     async def put_ackevents_cdata(self, device_id, endpoint_id=None, alarm_pin=None):
-        """Acknowledge the alarm events."""
-        # Experiment: /devices/meta declares ackEventCmd as a writable data
-        # attribute with enum ["ACK"], so try the data channel (no pwd);
-        # every cdata form (body or query, right pin or not) is rejected by
-        # this box with an HTTP 500.
+        """Acknowledge the alarm events.
+
+        The box acknowledges through the data channel: /devices/meta declares
+        ackEventCmd as a writable attribute with enum ["ACK"], and no pin is
+        required (alarm_pin is kept for signature compatibility). The cdata
+        form with a pwd body inherited from tydom2mqtt is rejected with an
+        HTTP 500 (verified on a Tyxal+ via Tydom 1.0, right pin or not, pwd
+        in the body or in the query string), while this data write is
+        accepted and clears the unacked events.
+        """
         await self.put_devices_data(device_id, endpoint_id, "ackEventCmd", "ACK")
 
     async def get_historic_cdata(
