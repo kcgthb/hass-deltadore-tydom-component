@@ -1103,17 +1103,14 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
-    async def put_data(self, path, data: dict | None = None):
-        """Send a PUT request to path, with an optional JSON body."""
-        body = json.dumps(data) if data is not None else ""
+    async def put_data(self, path, name, value):
+        """Give order (name + value) to path."""
+        body = json.dumps({name: value})
 
-        headers = f"Content-Length: {len(body)}\r\n"
-        if data is not None:
-            headers += "Content-Type: application/json; charset=UTF-8\r\n"
         str_request = (
-            f"PUT {path} HTTP/1.1\r\n"
-            + headers
-            + "Transac-Id: 0\r\n\r\n"
+            f"PUT {path} HTTP/1.1\r\nContent-Length: "
+            + str(len(body))
+            + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
             + body
             + "\r\n\r\n"
         )
@@ -1358,20 +1355,16 @@ class TydomClient:
 
     async def put_ackevents_cdata(self, device_id, endpoint_id=None, alarm_pin=None):
         """Acknowledge the alarm events."""
-        # The command metadata (cmeta) declares ackEventCmd with a single pwd
-        # parameter (hexstring, size 6). Parameters of cdata commands are
-        # passed in the query string, exactly like the histo request; the box
-        # rejects a JSON body variant with an HTTP 500.
+        # PUT /devices/xxxx/endpoints/xxxx/cdata?name=ackEventCmd HTTP/1.1 {"pwd":"xxxxxx"}
         pwd = alarm_pin or self._alarm_pin
         # The config entry stores an unset pin as an empty string, not None;
         # the box silently ignores the command in both cases.
         if not pwd:
             LOGGER.warning("Tydom alarm pin is not set!")
-        safe_device_id = quote(str(device_id), safe="")
-        safe_endpoint_id = quote(str(endpoint_id), safe="")
-        safe_pwd = quote(str(pwd), safe="")
         await self.put_data(
-            f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata?name=ackEventCmd&pwd={safe_pwd}"
+            f"/devices/{device_id}/endpoints/{endpoint_id}/cdata?name=ackEventCmd",
+            "pwd",
+            str(pwd),
         )
 
     async def get_historic_cdata(
