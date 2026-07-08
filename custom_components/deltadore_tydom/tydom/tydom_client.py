@@ -1103,9 +1103,9 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
-    async def put_data(self, path, name, value):
-        """Give order (name + value) to path."""
-        body = json.dumps({name: value})
+    async def put_data(self, path, data: dict):
+        """Send a PUT request with a JSON body to path."""
+        body = json.dumps(data)
 
         str_request = (
             f"PUT {path} HTTP/1.1\r\nContent-Length: "
@@ -1355,7 +1355,10 @@ class TydomClient:
 
     async def put_ackevents_cdata(self, device_id, endpoint_id=None, alarm_pin=None):
         """Acknowledge the alarm events."""
-        # PUT /devices/xxxx/endpoints/xxxx/cdata?name=ackEventCmd HTTP/1.1 {"pwd":"xxxxxx"}
+        # The alarm metadata declares ackEventCmd as a write-only string
+        # command with enum_values ["ACK"] (see tools/traces-tyxal-CSX40.txt),
+        # so the box expects a value alongside the pin and rejects a pin-only
+        # body with an HTTP 500.
         pwd = alarm_pin or self._alarm_pin
         # The config entry stores an unset pin as an empty string, not None;
         # the box silently ignores the command in both cases.
@@ -1363,8 +1366,7 @@ class TydomClient:
             LOGGER.warning("Tydom alarm pin is not set!")
         await self.put_data(
             f"/devices/{device_id}/endpoints/{endpoint_id}/cdata?name=ackEventCmd",
-            "pwd",
-            str(pwd),
+            {"value": "ACK", "pwd": str(pwd)},
         )
 
     async def get_historic_cdata(
